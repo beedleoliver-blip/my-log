@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Log">
+<meta name="theme-color" content="#0f0f0f">
+<title>Log</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0ede6;
+    --muted: #888880;
+    --hint: #555550;
+    --accent: #c8b89a;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --font: 'Georgia', serif;
+    --mono: 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); overscroll-behavior: none; }
+
+  #app { max-width: 480px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; position: relative; }
+
+  /* header */
+  .header { padding: 52px 20px 12px; display: flex; align-items: flex-end; justify-content: space-between; }
+  .header-title { font-size: 28px; font-weight: normal; letter-spacing: -0.5px; color: var(--text); }
+  .header-date { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+  .icon-btn { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 22px; padding: 4px 6px; line-height: 1; border-radius: 6px; }
+  .icon-btn:hover { color: var(--text); }
+  .icon-btn:active { background: var(--surface2); }
+
+  /* tabs */
+  .tabs { display: flex; gap: 0; padding: 0 20px; margin-bottom: 4px; }
+  .tab { font-size: 13px; font-family: var(--mono); padding: 6px 14px 8px; cursor: pointer; color: var(--muted); border-bottom: 1.5px solid transparent; background: none; border-top: none; border-left: none; border-right: none; transition: color 0.15s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* scrollable content */
+  .content { flex: 1; overflow-y: auto; padding: 0 20px 100px; -webkit-overflow-scrolling: touch; }
+
+  /* activity rows */
+  .activity-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .activity-row:last-child { border-bottom: none; }
+  .act-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .act-info { flex: 1; min-width: 0; }
+  .act-name { font-size: 15px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .act-unit { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+  .act-today { font-size: 13px; color: var(--muted); font-family: var(--mono); text-align: right; flex-shrink: 0; }
+  .log-btn { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 7px 16px; font-size: 13px; cursor: pointer; color: var(--text); font-family: var(--mono); flex-shrink: 0; }
+  .log-btn:active { opacity: 0.7; transform: scale(0.97); }
+
+  /* history */
+  .date-group { margin-bottom: 24px; }
+  .date-label { font-size: 11px; font-family: var(--mono); color: var(--hint); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; padding-top: 4px; }
+  .entry-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .entry-row:last-child { border-bottom: none; }
+  .entry-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .entry-text { flex: 1; font-size: 14px; }
+  .entry-qty { font-family: var(--mono); color: var(--accent); }
+  .entry-time { font-size: 11px; font-family: var(--mono); color: var(--hint); margin-top: 2px; }
+  .del-btn { background: none; border: none; cursor: pointer; color: var(--hint); font-size: 18px; padding: 4px 6px; line-height: 1; }
+  .del-btn:hover { color: #e24b4a; }
+
+  /* manage */
+  .manage-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .manage-row:last-child { border-bottom: none; }
+  .manage-info { flex: 1; }
+  .manage-name { font-size: 14px; }
+  .manage-unit { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .color-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .add-btn { width: 100%; padding: 12px; border: 1px dashed var(--border2); border-radius: var(--radius); background: none; color: var(--muted); font-size: 14px; cursor: pointer; margin-top: 16px; font-family: var(--font); }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* stats */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border-radius: var(--radius); padding: 14px; border: 1px solid var(--border); }
+  .stat-icon { font-size: 20px; margin-bottom: 8px; }
+  .stat-name { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 4px; text-transform: lowercase; }
+  .stat-val { font-size: 22px; color: var(--accent); font-family: var(--mono); }
+  .stat-unit-lbl { font-size: 11px; color: var(--muted); }
+
+  /* empty */
+  .empty { text-align: center; padding: 48px 0 24px; color: var(--muted); font-size: 15px; line-height: 1.7; }
+
+  /* modal */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; align-items: flex-end; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; padding: 20px 20px 40px; width: 100%; max-width: 480px; border-top: 1px solid var(--border2); }
+  .modal h2 { font-size: 17px; font-weight: normal; margin-bottom: 16px; }
+  .qty-row { display: flex; align-items: center; gap: 16px; margin: 20px 0 8px; }
+  .qty-btn { width: 48px; height: 48px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border2); font-size: 24px; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .qty-btn:active { opacity: 0.6; }
+  .qty-num { flex: 1; text-align: center; font-size: 40px; font-family: var(--mono); color: var(--accent); }
+  .qty-unit-lbl { text-align: center; font-size: 13px; color: var(--muted); font-family: var(--mono); margin-bottom: 20px; }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-btns button { flex: 1; padding: 12px; border-radius: var(--radius-sm); font-size: 15px; cursor: pointer; font-family: var(--font); }
+  .btn-cancel { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+  .btn-save { background: var(--accent); border: none; color: #0f0f0f; font-weight: bold; }
+  .btn-save:active, .btn-cancel:active { transform: scale(0.98); opacity: 0.9; }
+
+  /* form inputs */
+  input[type=text] { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text); font-size: 15px; font-family: var(--font); margin-bottom: 10px; }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  input::placeholder { color: var(--hint); }
+  .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 12px; }
+  .emoji-opt { font-size: 20px; padding: 7px; border-radius: var(--radius-sm); border: 1.5px solid transparent; cursor: pointer; text-align: center; background: var(--surface2); }
+  .emoji-opt.sel { border-color: var(--accent); }
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; flex-shrink: 0; }
+  .color-swatch.sel { border-color: var(--text); }
+
+  /* nav bar */
+  .navbar { display: flex; background: var(--surface); border-top: 1px solid var(--border); padding: 8px 0 max(8px, env(safe-area-inset-bottom)); position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; z-index: 10; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; padding: 4px 0; }
+  .nav-icon { font-size: 20px; line-height: 1; }
+  .nav-label { font-size: 10px; font-family: var(--mono); color: var(--muted); }
+  .nav-item.active .nav-label { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="view-log" class="view">
+    <div class="header">
+      <div>
+        <div class="header-title">log</div>
+        <div class="header-date" id="header-date"></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" id="tab-today" onclick="switchTab('today')">today</button>
+      <button class="tab" id="tab-history" onclick="switchTab('history')">history</button>
+    </div>
+    <div class="content">
+      <div id="pane-today"></div>
+      <div id="pane-history" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="view-stats" class="view" style="display:none;">
+    <div class="header">
+      <div class="header-title">summary</div>
+    </div>
+    <div class="content" id="stats-content"></div>
+  </div>
+
+  <div id="view-manage" class="view" style="display:none;">
+    <div class="header">
+      <div class="header-title">activities</div>
+    </div>
+    <div class="content">
+      <div id="manage-list"></div>
+      <button class="add-btn" onclick="openAddModal()">+ add activity</button>
+    </div>
+  </div>
+
+  <nav class="navbar">
+    <button class="nav-item active" id="nb-log" onclick="showView('log')">
+      <span class="nav-icon">◈</span>
+      <span class="nav-label">log</span>
+    </button>
+    <button class="nav-item" id="nb-stats" onclick="showView('stats')">
+      <span class="nav-icon">◫</span>
+      <span class="nav-label">summary</span>
+    </button>
+    <button class="nav-item" id="nb-manage" onclick="showView('manage')">
+      <span class="nav-icon">◧</span>
+      <span class="nav-label">activities</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Log modal -->
+<div class="modal-bg" id="modal-log">
+  <div class="modal">
+    <h2 id="modal-log-title"></h2>
+    <div class="qty-row">
+      <button class="qty-btn" onclick="adjustQty(-1)">−</button>
+      <div class="qty-num" id="modal-qty">1</div>
+      <button class="qty-btn" onclick="adjustQty(1)">+</button>
+    </div>
+    <div class="qty-unit-lbl" id="modal-unit-lbl"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-log')">cancel</button>
+      <button class="btn-save" onclick="saveLog()">save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add activity modal -->
+<div class="modal-bg" id="modal-add">
+  <div class="modal" style="max-height: 90vh; overflow-y: auto;">
+    <h2>new activity</h2>
+    <input type="text" id="new-name" placeholder="name (e.g. cycling)" />
+    <input type="text" id="new-unit" placeholder="unit (e.g. hours, drinks, km)" />
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <div class="color-row" id="color-row"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-add')">cancel</button>
+      <button class="btn-save" onclick="saveNewActivity()">add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#c8b89a','#378ADD','#1D9E75','#D85A30','#D4537E','#7F77DD','#BA7517','#639922'];
+const EMOJIS = ['📚','🇪🇸','🍺','🏃','🧘','💪','🎸','✍️','🎮','😴','🥗','💊','🚴','🧠','🎯','🍷','☕','🏋️','🎵','🌿'];
+
+let state = {
+  activities: [
+    { id:'a1', name:'book reading', unit:'hours', emoji:'📚', color:'#378ADD', step:0.5 },
+    { id:'a2', name:'spanish learning', unit:'hours', emoji:'🇪🇸', color:'#1D9E75', step:0.5 },
+    { id:'a3', name:'alcoholic drinks', unit:'drinks', emoji:'🍺', color:'#D85A30', step:1 },
+  ],
+  entries: []
+};
+
+let pendingLog = null;
+let newActivity = { emoji: EMOJIS[0], color: COLORS[0] };
+
+function load() {
+  try {
+    const s = localStorage.getItem('actlog_v1');
+    if (s) {
+      const d = JSON.parse(s);
+      if (d.activities?.length) state.activities = d.activities;
+      if (d.entries) state.entries = d.entries;
+    }
+  } catch(e) {}
+}
+
+function save() {
+  localStorage.setItem('actlog_v1', JSON.stringify(state));
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function todayTotals() {
+  const t = {};
+  state.entries.filter(e => e.date === todayStr()).forEach(e => {
+    t[e.activityId] = (t[e.activityId] || 0) + e.qty;
+  });
+  return t;
+}
+
+function fmt(n, unit) {
+  const v = parseFloat(n);
+  return (Number.isInteger(v) ? v : v.toFixed(1)) + ' ' + unit;
+}
+
+function formatDate(d) {
+  const today = todayStr();
+  const yd = new Date(); yd.setDate(yd.getDate()-1);
+  const yStr = yd.toISOString().split('T')[0];
+  if (d === today) return 'today';
+  if (d === yStr) return 'yesterday';
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'short' });
+}
+
+function formatTime(ts) {
+  return new Date(ts).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+}
+
+// RENDER
+function render() {
+  renderToday();
+  renderHistory();
+  renderManage();
+  renderStats();
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+}
+
+function renderToday() {
+  const totals = todayTotals();
+  const el = document.getElementById('pane-today');
+  if (!state.activities.length) {
+    el.innerHTML = '<div class="empty">No activities yet.<br>Go to Activities to add some.</div>';
+    return;
+  }
+  el.innerHTML = state.activities.map(a => `
+    <div class="activity-row">
+      <div class="act-icon" style="background:${a.color}22;">${a.emoji}</div>
+      <div class="act-info">
+        <div class="act-name">${a.name}</div>
+        <div class="act-unit">per ${a.unit}</div>
+      </div>
+      ${totals[a.id] ? `<div class="act-today">${fmt(totals[a.id], a.unit)}</div>` : ''}
+      <button class="log-btn" onclick="openLogModal('${a.id}')">+ log</button>
+    </div>`).join('');
+}
+
+function renderHistory() {
+  const el = document.getElementById('pane-history');
+  if (!state.entries.length) {
+    el.innerHTML = '<div class="empty">Nothing logged yet.</div>';
+    return;
+  }
+  const sorted = [...state.entries].sort((a,b) => b.ts - a.ts);
+  const groups = {};
+  sorted.forEach(e => { if (!groups[e.date]) groups[e.date] = []; groups[e.date].push(e); });
+  el.innerHTML = Object.entries(groups).map(([date, entries]) => `
+    <div class="date-group">
+      <div class="date-label">${formatDate(date)}</div>
+      ${entries.map(e => {
+        const a = state.activities.find(x => x.id === e.activityId);
+        if (!a) return '';
+        return `<div class="entry-row">
+          <div class="entry-dot" style="background:${a.color};"></div>
+          <div class="entry-text">
+            <div><span class="entry-qty">${fmt(e.qty, a.unit)}</span>  ${a.name}</div>
+            <div class="entry-time">${formatTime(e.ts)}</div>
+          </div>
+          <button class="del-btn" onclick="deleteEntry('${e.id}')">×</button>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+function renderManage() {
+  const el = document.getElementById('manage-list');
+  if (!state.activities.length) {
+    el.innerHTML = '<div class="empty">No activities yet.</div>';
+    return;
+  }
+  el.innerHTML = state.activities.map(a => `
+    <div class="manage-row">
+      <span style="font-size:22px;">${a.emoji}</span>
+      <div class="color-dot" style="background:${a.color};"></div>
+      <div class="manage-info">
+        <div class="manage-name">${a.name}</div>
+        <div class="manage-unit">in ${a.unit}</div>
+      </div>
+      <button class="del-btn" onclick="deleteActivity('${a.id}')">×</button>
+    </div>`).join('');
+}
+
+function renderStats() {
+  const el = document.getElementById('stats-content');
+  const allTotals = {};
+  state.entries.forEach(e => { allTotals[e.activityId] = (allTotals[e.activityId] || 0) + e.qty; });
+  const days = new Set(state.entries.map(e => e.date)).size;
+  const active = state.activities.filter(a => allTotals[a.id]);
+  if (!active.length) {
+    el.innerHTML = '<div class="empty">No data yet.<br>Start logging to see your summary.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <p style="font-size:12px;font-family:var(--mono);color:var(--muted);margin-bottom:16px;">${state.entries.length} entries · ${days} day${days!==1?'s':''}</p>
+    <div class="stat-grid">
+      ${active.map(a => {
+        const n = allTotals[a.id];
+        const v = Number.isInteger(n) ? n : parseFloat(n.toFixed(1));
+        return `<div class="stat-card">
+          <div class="stat-icon">${a.emoji}</div>
+          <div class="stat-name">${a.name}</div>
+          <div class="stat-val">${v}</div>
+          <div class="stat-unit-lbl">${a.unit} total</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// VIEWS
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  document.getElementById('view-' + name).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('nb-' + name).classList.add('active');
+  if (name === 'stats') renderStats();
+}
+
+// TABS
+let activeTab = 'today';
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('pane-today').style.display = tab === 'today' ? 'block' : 'none';
+  document.getElementById('pane-history').style.display = tab === 'history' ? 'block' : 'none';
+  document.getElementById('tab-today').classList.toggle('active', tab === 'today');
+  document.getElementById('tab-history').classList.toggle('active', tab === 'history');
+}
+
+// LOG MODAL
+function openLogModal(activityId) {
+  const a = state.activities.find(x => x.id === activityId);
+  if (!a) return;
+  pendingLog = { activityId, qty: a.step || 1, step: a.step || 1 };
+  document.getElementById('modal-log-title').textContent = a.emoji + '  ' + a.name;
+  document.getElementById('modal-unit-lbl').textContent = a.unit;
+  updateQtyDisplay();
+  document.getElementById('modal-log').classList.add('open');
+}
+
+function adjustQty(dir) {
+  const step = pendingLog.step;
+  pendingLog.qty = Math.max(step, parseFloat((pendingLog.qty + dir * step).toFixed(2)));
+  updateQtyDisplay();
+}
+
+function updateQtyDisplay() {
+  const q = pendingLog.qty;
+  document.getElementById('modal-qty').textContent = Number.isInteger(q) ? q : q.toFixed(1);
+}
+
+function saveLog() {
+  state.entries.push({
+    id: 'e' + Date.now(),
+    activityId: pendingLog.activityId,
+    qty: pendingLog.qty,
+    date: todayStr(),
+    ts: Date.now()
+  });
+  save();
+  closeModal('modal-log');
+  render();
+}
+
+function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  state.entries = state.entries.filter(e => e.id !== id);
+  save();
+  render();
+}
+
+function deleteActivity(id) {
+  if (!confirm('Remove this activity? Past entries will remain.')) return;
+  state.activities = state.activities.filter(a => a.id !== id);
+  save();
+  render();
+}
+
+// ADD ACTIVITY MODAL
+function openAddModal() {
+  newActivity = { emoji: EMOJIS[0], color: COLORS[0] };
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-unit').value = '';
+
+  const eg = document.getElementById('emoji-grid');
+  eg.innerHTML = EMOJIS.map(e => `<div class="emoji-opt${e===newActivity.emoji?' sel':''}" onclick="pickEmoji('${e}',this)">${e}</div>`).join('');
+
+  const cr = document.getElementById('color-row');
+  cr.innerHTML = COLORS.map((c,i) => `<div class="color-swatch${i===0?' sel':''}" style="background:${c}" onclick="pickColor('${c}',this)"></div>`).join('');
+
+  document.getElementById('modal-add').classList.add('open');
+}
+
+function pickEmoji(e, el) {
+  newActivity.emoji = e;
+  document.querySelectorAll('#emoji-grid .emoji-opt').forEach(x => x.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function pickColor(c, el) {
+  newActivity.color = c;
+  document.querySelectorAll('#color-row .color-swatch').forEach(x => x.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function saveNewActivity() {
+  const name = document.getElementById('new-name').value.trim().toLowerCase();
+  const unit = document.getElementById('new-unit').value.trim().toLowerCase();
+  if (!name || !unit) { alert('Please fill in both name and unit.'); return; }
+  const isHours = unit.includes('hour') || unit.includes('min');
+  state.activities.push({
+    id: 'a' + Date.now(),
+    name, unit,
+    emoji: newActivity.emoji,
+    color: newActivity.color,
+    step: isHours ? 0.5 : 1
+  });
+  save();
+  closeModal('modal-add');
+  render();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// close modals on bg tap handled by modal-bg onclick
+document.getElementById('modal-log').addEventListener('click', function(e) {
+  if (e.target === this) closeModal('modal-log');
+});
+document.getElementById('modal-add').addEventListener('click', function(e) {
+  if (e.target === this) closeModal('modal-add');
+});
+
+load();
+render();
+</script>
+</body>
+</html>
